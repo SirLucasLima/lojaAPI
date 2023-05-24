@@ -1,26 +1,30 @@
 import {
-  Text,
+  Image,
+  ScrollView,
   Switch,
+  Text,
+  TextInput,
   TouchableOpacity,
   View,
-  TextInput,
-  ScrollView,
-  Image,
 } from 'react-native'
 import Icon from '@expo/vector-icons/Feather'
 
 import NLWLogo from '../src/assets/nlw-spacetime-logo.svg'
-import { Link } from 'expo-router'
+import { Link, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import * as ImagePicker from 'expo-image-picker'
+import * as SecureStore from 'expo-secure-store'
+import { api } from '../src/lib/api'
 
-export default function New() {
+export default function NewMemory() {
   const { bottom, top } = useSafeAreaInsets()
+  const router = useRouter()
 
-  const [preview, SetPreview] = useState('')
-  const [content, SetContent] = useState('')
-  const [isPublic, SetIsPublic] = useState(false)
+  const [preview, setPreview] = useState<string | null>(null)
+
+  const [content, setContent] = useState('')
+  const [isPublic, setIsPublic] = useState(false)
 
   async function openImagePicker() {
     try {
@@ -30,11 +34,51 @@ export default function New() {
       })
 
       if (result.assets[0]) {
-        SetPreview(result.assets[0].uri)
+        setPreview(result.assets[0].uri)
       }
     } catch (err) {
-      console.log(err)
+      // deu erro mas eu não tratei
     }
+  }
+
+  async function handleCreateMemory() {
+    const token = await SecureStore.getItemAsync('token')
+
+    let coverUrl = ''
+
+    if (preview) {
+      const uploadFormData = new FormData()
+
+      uploadFormData.append('file', {
+        uri: preview,
+        name: 'image.jpg',
+        type: 'image/jpg',
+      } as any)
+
+      const uploadResponse = await api.post('/upload', uploadFormData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+
+      coverUrl = uploadResponse.data.fileUrl
+    }
+
+    await api.post(
+      '/memories',
+      {
+        content,
+        isPublic,
+        coverUrl,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    )
+
+    router.push('/memories')
   }
 
   return (
@@ -54,7 +98,7 @@ export default function New() {
         <View className="flex-row items-center gap-2">
           <Switch
             value={isPublic}
-            onValueChange={SetIsPublic}
+            onValueChange={setIsPublic}
             trackColor={{
               false: '#767577',
               true: '#372568',
@@ -72,6 +116,7 @@ export default function New() {
         >
           {preview ? (
             <Image
+              alt=""
               source={{ uri: preview }}
               className="h-full w-full rounded-lg object-cover"
             />
@@ -88,7 +133,8 @@ export default function New() {
         <TextInput
           multiline
           value={content}
-          onChangeText={SetContent}
+          onChangeText={setContent}
+          textAlignVertical="top"
           className="p-0 font-body text-lg text-gray-50"
           placeholder="Feel free to add photos, videos, and narratives about this experience that you want to remember forever."
           placeholderTextColor="#56565a"
@@ -96,6 +142,7 @@ export default function New() {
 
         <TouchableOpacity
           activeOpacity={0.7}
+          onPress={handleCreateMemory}
           className="items-center rounded-full bg-green-500 px-5 py-2"
         >
           <Text className="font-alt text-sm uppercase text-black">Save</Text>
