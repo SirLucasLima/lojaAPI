@@ -145,7 +145,7 @@ export default function NewMemory() {
           onPress={handleCreateMemory}
           className="items-center self-end rounded-full bg-green-500 px-5 py-2"
         >
-          <Text className="font-alt text-sm uppercase text-black">Save</Text>
+          <Text className="font-alt text-sm uppercase text-black">Salvar</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
